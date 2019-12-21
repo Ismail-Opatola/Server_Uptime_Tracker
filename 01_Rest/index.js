@@ -11,6 +11,26 @@ const StringDecoder = require("string_decoder").StringDecoder;
 const config = require("./config");
 const fs = require("fs");
 
+// ==================================================
+// TESTING our fs/db/store CRUD
+// ==================================================
+
+const _data = require("./lib/data");
+
+// _data.create("test", "newFile3", { foo: "bar" }, err => {
+//   console.log("this  was the error", err);
+// });
+// _data.read("test", "newF", (err, data) => {
+//   console.log("this  was the error", err, "and this was the data", data);
+// });
+// _data.update("test", "newFile", { fizz: "buzzer" }, (err, data) => {
+//   console.log("this  was the error", err, "and this was the data", data);
+// });
+_data.delete("test", "newFile3", (err, data) => {
+  console.log("this was the error", err, "and this was the data", data);
+});
+// ========================================================
+
 // instantial the HTTP server
 const httpServer = http.createServer((req, res) => {
   unifiedServer(req, res);
