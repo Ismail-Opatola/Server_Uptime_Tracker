@@ -5,11 +5,43 @@
 
 // Dependencies
 const http = require("http");
+const https = require("https");
 const url = require("url");
 const StringDecoder = require("string_decoder").StringDecoder;
 const config = require("./config");
+const fs = require("fs");
 
-let server = http.createServer((req, res) => {
+// instantial the HTTP server
+const httpServer = http.createServer((req, res) => {
+  unifiedServer(req, res);
+});
+
+// start the HTTP server
+httpServer.listen(config.httpPort, () => {
+  console.log(
+    `The server is listening on port ${config.httpPort} in ${config.envName} mode`
+  );
+});
+
+// instantiate the HTTPS server
+const httpsServerOptions = {
+  key: fs.readFileSync("./https/key.pem"),
+  cert: fs.readFileSync("./https/cert.pem")
+};
+// we're passing the httpsServerOptions to the https server when it starts so it can actually create a secure connection when it starts
+const httpsServer = https.createServer(httpsServerOptions, (req, res) => {
+  unifiedServer(req, res);
+});
+
+// start the HTTPS server
+httpsServer.listen(config.httpsPort, () => {
+  console.log(
+    `The server is listening on port ${config.httpsPort} in ${config.envName} mode`
+  );
+});
+
+// all the server logic for both http and https server
+const unifiedServer = (req, res) => {
   // get the url and parse it
   const parsedUrl = url.parse(req.url, true);
 
@@ -75,13 +107,7 @@ let server = http.createServer((req, res) => {
 
     // console.log("Reqest received with this payload: ", buffer);
   });
-});
-
-server.listen(config.port, () => {
-  console.log(
-    `The server is listening on port ${config.port} in ${config.envName} mode`
-  );
-});
+};
 
 // define a request handlers
 const handlers = {};
