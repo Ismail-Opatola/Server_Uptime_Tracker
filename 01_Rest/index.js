@@ -8,14 +8,16 @@ const http = require("http");
 const https = require("https");
 const url = require("url");
 const StringDecoder = require("string_decoder").StringDecoder;
-const config = require("./config");
+const config = require("./lib/config");
 const fs = require("fs");
+const handlers = require("./lib/handlers");
+const helpers = require("./lib/helpers");
 
 // ==================================================
 // TESTING our fs/db/store CRUD
 // ==================================================
 
-const _data = require("./lib/data");
+// const _data = require("./lib/data");
 
 // _data.create("test", "newFile3", { foo: "bar" }, err => {
 //   console.log("this  was the error", err);
@@ -26,9 +28,9 @@ const _data = require("./lib/data");
 // _data.update("test", "newFile", { fizz: "buzzer" }, (err, data) => {
 //   console.log("this  was the error", err, "and this was the data", data);
 // });
-_data.delete("test", "newFile3", (err, data) => {
-  console.log("this was the error", err, "and this was the data", data);
-});
+// _data.delete("test", "newFile3", (err, data) => {
+//   console.log("this was the error", err, "and this was the data", data);
+// });
 // ========================================================
 
 // instantial the HTTP server
@@ -100,10 +102,10 @@ const unifiedServer = (req, res) => {
       queryStringObject: queryStringObject,
       method: method,
       headers: headers,
-      payload: buffer
+      payload: helpers.parseJsonToObject(buffer)
     };
 
-    // rout the request to the hadler specified in the router
+    // route the request to the hadler specified in the router
     chosenHandler(data, (statusCode, payload) => {
       // use the status code called back by the handler, or default to 200
       statusCode = typeof statusCode == "number" ? statusCode : 200;
@@ -129,23 +131,10 @@ const unifiedServer = (req, res) => {
   });
 };
 
-// define a request handlers
-const handlers = {};
-
-// smaple handler
-handlers.ping = (data, callback) => {
-  // callback a http status code and a payload object
-  callback(200);
-};
-
-// Not-found handler
-handlers.notFound = (data, callback) => {
-  callback(404);
-};
-
 // define a request router
 const router = {
-  ping: handlers.ping
+  ping: handlers.ping,
+  users: handlers.users
 };
 
 // ====================================
