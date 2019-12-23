@@ -5,6 +5,7 @@
 // Dependencies
 const _data = require("./data");
 const helpers = require("./helpers");
+const config = require("./config");
 
 // define a request handlers
 const handlers = {};
@@ -288,7 +289,7 @@ handlers._users.get = (data, callback) => {
     const token =
       typeof data.headers.token == "string" ? data.headers.token : false;
     // verify that the given token from the headers is valid for the phone number
-    handlers._tokens.verifyToken(token.id, phone, tokenIsValid => {
+    handlers._tokens.verifyToken(token, phone, tokenIsValid => {
       if (tokenIsValid) {
         _data.read("users", phone, (err, data) => {
           if (!err && data) {
@@ -394,7 +395,7 @@ handlers._users.put = (data, callback) => {
 // users - delete
 // Required feild: phone
 // only let an authenticated user delete their object, don't let them delete anyone else's
-// @TODO: cleanup (delete) any othe data files associated with this user
+// cleanup (delete) any other data files associated with this user
 handlers._users.delete = (data, callback) => {
   // check that the phine number is valid
   const phone =
@@ -410,12 +411,46 @@ handlers._users.delete = (data, callback) => {
     // verify that the given token from the headers is valid for the phone number
     handlers._tokens.verifyToken(token, phone, tokenIsValid => {
       if (tokenIsValid) {
-        _data.read("users", phone, (err, data) => {
-          if (!err && data) {
+        _data.read("users", phone, (err, userData) => {
+          if (!err && userData) {
             //   remove the hash password from the user object before returning it to the requester
             _data.delete("users", phone, err => {
               if (!err) {
-                callback(200);
+                // delete each of the checks associated with the user
+                const userChecks =
+                  typeof userData.checks == "object" &&
+                  userData.checks instanceof Array
+                    ? userData.checks
+                    : [];
+                const checksToDelete = userChecks.length;
+
+                if (checksToDelete > 0) {
+                  let checksDeleted = 0;
+                  let deletionErrors = false;
+
+                  // loop through the checks
+                  userChecks.forEach(checkId => {
+                    // delete the check
+                    _data.delete("checks", checkId, err => {
+                      if (err) {
+                        deletionErrors = true;
+                      }
+                      checksDeleted++;
+                      if (checksDeleted == checksToDelete) {
+                        if (!deletionErrors) {
+                          callback(200);
+                        } else {
+                          callback(500, {
+                            Error:
+                              "Errors encountered while attempting to delete all of the user's checks. all checks may not have been deleted from the system successfully"
+                          });
+                        }
+                      }
+                    });
+                  });
+                } else {
+                  callback(200);
+                }
               } else {
                 callback(500, { Error: "Could not delete the specified user" });
               }
@@ -435,6 +470,381 @@ handlers._users.delete = (data, callback) => {
   }
 };
 
+// -----------------
+// checks handler
+// ----------------
+handlers.checks = (data, callback) => {
+  const acceptableMethods = ["post", "get", "put", "delete"];
+  if (acceptableMethods.indexOf(data.method) > -1) {
+    handlers._checks[data.method](data, callback);
+  } else {
+    // method not allowed
+    callback(405);
+  }
+};
+
+// container for the checks submethods
+handlers._checks = {};
+
+// check - post
+// Required data: protocol (http or https), url, method, successCode, timeoutSeconds
+// Optional data: none
+handlers._checks.post = (data, callback) => {
+  // check the required feild
+  const protocol =
+    typeof data.payload.protocol == "string" &&
+    ["http", "https"].indexOf(data.payload.protocol) > -1
+      ? data.payload.protocol
+      : false;
+  const url =
+    typeof data.payload.url == "string" && data.payload.url.trim().length > 0
+      ? data.payload.url.trim()
+      : false;
+  const method =
+    typeof data.payload.method == "string" &&
+    ["post", "get", "put", "delete"].indexOf(data.payload.method) > -1
+      ? data.payload.method
+      : false;
+  const successCodes =
+    typeof data.payload.successCodes == "object" &&
+    data.payload.successCodes instanceof Array &&
+    data.payload.successCodes.length > 0
+      ? data.payload.successCodes
+      : false;
+  const timeoutSeconds =
+    typeof data.payload.timeoutSeconds == "number" &&
+    data.payload.timeoutSeconds % 1 === 0 &&
+    data.payload.timeoutSeconds >= 1 &&
+    data.payload.timeoutSeconds <= 5
+      ? data.payload.timeoutSeconds
+      : false;
+
+  if (protocol && url && method && successCodes && timeoutSeconds) {
+    // get the token from the headers
+    const token =
+      typeof data.headers.token == "string" ? data.headers.token : false;
+
+    // lookup the user by reading the token
+    _data.read("tokens", token, (err, tokenData) => {
+      if (!err && tokenData) {
+        const userPhone = tokenData.phone;
+
+        // lookup user data
+        _data.read("users", userPhone, (err, userData) => {
+          if (!err && userData) {
+            const userChecks =
+              typeof userData.checks == "object" &&
+              userData.checks instanceof Array
+                ? userData.checks
+                : [];
+
+            // verify that the user has less than the number of max-checks-per-user
+            if (userChecks.length < config.maxChecks) {
+              // create a random id for the checks
+              const checkId = helpers.createRandomString(20);
+
+              // create the check obj an ginclude the user's phone
+              const checkObject = {
+                id: checkId,
+                userPhone: userPhone,
+                protocol: protocol,
+                url: url,
+                method: method,
+                successCodes: successCodes,
+                timeoutSeconds: timeoutSeconds
+              };
+
+              // save the object to disk
+              _data.create("checks", checkId, checkObject, err => {
+                if (!err) {
+                  // add the check id to the user's object
+                  userData.checks = userChecks;
+                  userData.checks.push(checkId);
+
+                  // save the new user data
+                  _data.update("users", userPhone, userData, err => {
+                    if (!err) {
+                      // return the data about the new check
+                      callback(200, checkObject);
+                    } else {
+                      callback(500, {
+                        Error: "Could not update the user with the new check"
+                      });
+                    }
+                  });
+                } else {
+                  callback(500, { Error: "Could not create the new check" });
+                }
+              });
+            } else {
+              callback(400, {
+                Error: `The user already has the maximum number of checks ${config.maxChecks}`
+              });
+            }
+          } else {
+            callback(403);
+          }
+        });
+      } else {
+        callback(403);
+      }
+    });
+  } else {
+    callback(400, { Error: "Missing required inputs, or inputs are invalid" });
+  }
+};
+
+// checks - get
+// Required data : checkId
+// Optional data : none
+handlers._checks.get = (data, callback) => {
+  // check that id is valid
+  const checkId =
+    typeof data.queryStringObject.id == "string" &&
+    data.queryStringObject.id.trim().length == 20
+      ? data.queryStringObject.id.trim()
+      : false;
+
+  if (checkId) {
+    // lookup the check
+    _data.read("checks", checkId, (err, checkData) => {
+      if (!err && checkData) {
+        //   get the token from the headers
+        const token =
+          typeof data.headers.token == "string" ? data.headers.token : false;
+        // verify that the given token from the headers is valid and belongs to the user who created the check
+
+        handlers._tokens.verifyToken(
+          token,
+          checkData.userPhone,
+          tokenIsValid => {
+            if (tokenIsValid) {
+              // return the check data
+              callback(200, checkData);
+            } else {
+              callback(403, {
+                Error: "Missing required token in header or token is invalid"
+              });
+            }
+          }
+        );
+      } else {
+        callback(404);
+      }
+    });
+  } else {
+    callback(400, { Error: "Missing required feild" });
+  }
+};
+
+// check - put
+// required data: id
+// optional data : protocol, url, successCodes, timeoutSeconds (one must be sent)
+handlers._checks.put = (data, callback) => {
+  // check the required feild
+  const checkId =
+    typeof data.payload.id == "string" && data.payload.id.trim().length == 20
+      ? data.payload.id.trim()
+      : false;
+
+  // check the optional data
+  const protocol =
+    typeof data.payload.protocol == "string" &&
+    ["http", "https"].indexOf(data.payload.protocol) > -1
+      ? data.payload.protocol
+      : false;
+  const url =
+    typeof data.payload.url == "string" && data.payload.url.trim().length > 0
+      ? data.payload.url.trim()
+      : false;
+  const method =
+    typeof data.payload.method == "string" &&
+    ["post", "get", "put", "delete"].indexOf(data.payload.method) > -1
+      ? data.payload.method
+      : false;
+  const successCodes =
+    typeof data.payload.successCodes == "object" &&
+    data.payload.successCodes instanceof Array &&
+    data.payload.successCodes.length > 0
+      ? data.payload.successCodes
+      : false;
+  const timeoutSeconds =
+    typeof data.payload.timeoutSeconds == "number" &&
+    data.payload.timeoutSeconds % 1 === 0 &&
+    data.payload.timeoutSeconds >= 1 &&
+    data.payload.timeoutSeconds <= 5
+      ? data.payload.timeoutSeconds
+      : false;
+
+  // Error if the id is invalid
+  if (checkId) {
+    // check to make sure one or more optional feild is sent
+    if (protocol || url || method || successCodes || timeoutSeconds) {
+      // lookup the check
+      _data.read("checks", checkId, (err, checkData) => {
+        if (!err && checkData) {
+          //   get the token from the headers
+          const token =
+            typeof data.headers.token == "string" ? data.headers.token : false;
+          // verify that the given token from the headers is valid and belongs to the user who created the check
+
+          handlers._tokens.verifyToken(
+            token,
+            checkData.userPhone,
+            tokenIsValid => {
+              if (tokenIsValid) {
+                // update the check data where necessary
+                if (protocol) {
+                  checkData.protocol = protocol;
+                }
+                if (url) {
+                  checkData.url = url;
+                }
+                if (method) {
+                  checkData.method = method;
+                }
+                if (successCodes) {
+                  checkData.successCodes = successCodes;
+                }
+                if (timeoutSeconds) {
+                  checkData.timeoutSeconds = timeoutSeconds;
+                }
+
+                // store the updates
+                _data.update("checks", checkId, checkData, err => {
+                  if (!err) {
+                    callback(200);
+                  } else {
+                    callback(500, { Error: "Could not update the check" });
+                  }
+                });
+              } else {
+                callback(403, {
+                  Error: "Missing required token in header or token is invalid"
+                });
+              }
+            }
+          );
+        } else {
+          callback(400, { Error: "check id did not exist" });
+        }
+      });
+    } else {
+      callback(400, { Error: "Missing feild to update" });
+    }
+  } else {
+    callback(400, { Error: "Missing required feild" });
+  }
+};
+
+// checks - delete
+// Required data: id
+// Optional data: none
+handlers._checks.delete = (data, callback) => {
+  // check that the ID is valid
+  const checkId =
+    typeof data.queryStringObject.id == "string" &&
+    data.queryStringObject.id.trim().length == 20
+      ? data.queryStringObject.id.trim()
+      : false;
+
+  if (checkId) {
+    // lookup te check
+    _data.read("checks", checkId, (err, checkData) => {
+      if (!err && checkData) {
+        // get the token from the headers
+        const token =
+          typeof data.headers.token == "string" ? data.headers.token : false;
+
+        // verify that the given token from the headers is valid for the phone number
+        handlers._tokens.verifyToken(
+          token,
+          checkData.userPhone,
+          tokenIsValid => {
+            if (tokenIsValid) {
+              // delete the check data
+              _data.delete("checks", checkId, err => {
+                if (!err) {
+                  // lookup the user
+                  _data.read("users", checkData.userPhone, (err, userData) => {
+                    if (!err && userData) {
+                      const userChecks =
+                        typeof userData.checks == "object" &&
+                        userData.checks instanceof Array
+                          ? userData.checks
+                          : [];
+
+                      // remove the delete check from their list of checks
+                      const checkPosition = userChecks.indexOf(checkId);
+                      if (checkPosition > -1) {
+                        userChecks.splice(checkPosition, 1);
+                        // mutation technique
+                        // we're mutating the data on the fly by splicing checkPosition which hold refs to checkData.checks array,
+                        // not copying it like i would to avoid mutation.
+                        // userData.checks = userChecks
+                        // but by re-assigning/updating DB with the mutated data userData, the object refs changes at the storage level i.e _data.update
+                        // if I had just copied it them i would have copied the data twice
+
+                        // re-save the user's data
+                        _data.update(
+                          "users",
+                          checkData.userPhone,
+                          userData,
+                          err => {
+                            if (!err) {
+                              callback(200);
+                            } else {
+                              callback(500, {
+                                Error: "Could not update the user check list"
+                              });
+                            }
+                          }
+                        );
+                      } else {
+                        callback(500, {
+                          Error:
+                            "Could not find the check on the user's object, thus could not remove it"
+                        });
+                      }
+                    } else {
+                      callback(400, {
+                        Error: "Could not find the user who created the check"
+                      });
+                    }
+                  });
+                } else {
+                  callback(500, { Error: "Could not delete the check data" });
+                }
+              });
+            } else {
+              callback(500, {
+                Error: "Missing required token in header, or ten is invalid"
+              });
+            }
+          }
+        );
+      } else {
+        callback(400, { Error: "The specified check ID does not exist" });
+      }
+    });
+  } else {
+    callback(400, { Error: "Missing Required feild" });
+  }
+};
+
+// --------------
+// ping handler
+// ------------------
+handlers.ping = (data, callback) => {
+  // callback a http status code and a payload object
+  callback(200);
+};
+
+// -------------------------
+// -------------------------
+// -------------------------
+// -------------------------
+
 // verify if a given tokenId is currently valid for a given user
 handlers._tokens.verifyToken = (tokenId, phone, callback) => {
   // lookup the token
@@ -450,12 +860,6 @@ handlers._tokens.verifyToken = (tokenId, phone, callback) => {
       callback(false);
     }
   });
-};
-
-// ping handler
-handlers.ping = (data, callback) => {
-  // callback a http status code and a payload object
-  callback(200);
 };
 
 // Not-found handler
