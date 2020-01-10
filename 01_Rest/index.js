@@ -32,6 +32,10 @@ const helpers = require("./lib/helpers");
 //   console.log("this was the error", err, "and this was the data", data);
 // });
 // ========================================================
+// TODO: TEMP
+helpers.sendTwilioSms("8139178642", "Hello from Twilio", (err, msg) => {
+  console.log("this was the error", err, msg);
+});
 
 // instantial the HTTP server
 const httpServer = http.createServer((req, res) => {
