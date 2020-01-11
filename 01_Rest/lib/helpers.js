@@ -86,7 +86,7 @@ helpers.sendTwilioSms = (phone, message, callback) => {
     var requestDetails = {
       protocol: "https:",
       hostname: "api.twilio.com",
-      method: "post",
+      method: "POST",
       path: `/2010-04-01/Accounts/${config.twilio.accountSid}/Messages.json`,
       auth: `${config.twilio.accountSid}:${config.twilio.authToken}`,
       headers: {
