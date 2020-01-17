@@ -74,9 +74,9 @@ helpers.sendTwilioSms = (phone, message, callback) => {
   if (phone && message) {
     // Configure the request payload
     const payload = {
-      From: config.twilio.fromPhone,
-      To: `+234${phone}`,
-      Body: message
+      from: config.twilio.fromPhone,
+      to: `+234${phone}`,
+      body: message
     };
 
     // stringify payload using querystring module instead of JSON.stringify because the reqeust we'll be sending is not of application/json but 'application/x-www-form-urlencoded' form content-type as specified by Twilio
@@ -84,7 +84,6 @@ helpers.sendTwilioSms = (phone, message, callback) => {
 
     // Configure the request details
     var requestDetails = {
-      protocol: "https:",
       hostname: "api.twilio.com",
       method: "POST",
       path: `/2010-04-01/Accounts/${config.twilio.accountSid}/Messages.json`,
@@ -99,6 +98,13 @@ helpers.sendTwilioSms = (phone, message, callback) => {
     const req = https.request(requestDetails, res => {
       // grab the status of the sent request
       const status = res.statusCode;
+      console.log([
+        `(sendTwilioSms) making https post request`,
+        `(sendTwilioSms) response completed: ${res.complete}`,
+        `(sendTwilioSms) response statusCode: ${res.statusCode}`,
+        { "(sendTwilioSms) response headers:": res.headers },
+        { "(sendTwilioSms) response body:": res.body }
+      ]);
       // callback successfully if the request went through
       if (status == 200 || status == 201) {
         callback(false);
@@ -113,7 +119,7 @@ helpers.sendTwilioSms = (phone, message, callback) => {
     // we don't want any error to kill the thread
     // so if the req we created emits an event called 'error', we want to invoke this function which would simply callback the error to our requester
     req.on("error", e => {
-      callback(e.message);
+      callback(e);
     });
 
     // add the payload to the request

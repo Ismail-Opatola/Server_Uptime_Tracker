@@ -6,3 +6,10 @@ steps:
     openssl req -newkey rsa:2048 -new -nodes
     -x509 -days 3650 -keyout key.pem -out cer
     t.pem
+
+node:
+    + https://nodejs.org/api/
+    + https://nodejs.dev/
+    + https://stackoverflow.com/questions/4976466/difference-between-process-stdout-write-and-console-log-in-node-js
+appshell:
+    + https://developers.google.com/web/fundamentals/architecture/app-shell

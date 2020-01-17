@@ -1,1 +1,8 @@
-{"firstName":"Turf","lastName":"Baba","phone":"8139178642","hashedPassword":"42befb8303b697d6178fc9f48c217e7f109df1cec85862250c9a53ac796ae8d7","tosAgreement":true,"checks":["6ecwi314z39e5a21kw41","id7tjl1eq7h99y0plmc5"]}
+{
+  "firstName": "Turf",
+  "lastName": "Baba",
+  "phone": "8139178642",
+  "hashedPassword": "42befb8303b697d6178fc9f48c217e7f109df1cec85862250c9a53ac796ae8d7",
+  "tosAgreement": true,
+  "checks": ["6ecwi314z39e5a21kw41", "id7tjl1eq7h99y0plmc5"]
+}

@@ -11,6 +11,8 @@ const https = require("https");
 const _data = require("./data");
 const _logs = require("./logs");
 const helpers = require("./helpers");
+const util = require("util");
+const debug = util.debuglog("workers"); // NODE_DEBUG=workers node index.js
 
 // Instantiate the worker object
 const workers = {};
@@ -27,12 +29,12 @@ workers.gatherAllChecks = () => {
             // Pass it to the checks validator, and let that function continue or log error as needed
             workers.validateCheckData(originalCheckData);
           } else {
-            console.log("Error reading one of the check's data");
+            debug("Error reading one of the check's data");
           }
         });
       });
     } else {
-      console.log("Error: Could not find any checks to process");
+      debug("Error: Could not find any checks to process");
     }
   });
 };
@@ -117,9 +119,7 @@ workers.validateCheckData = originalCheckData => {
   ) {
     workers.performCheck(originalCheckData);
   } else {
-    console.log(
-      "Error: One of the checks is not properly formatted. Skipping it"
-    );
+    debug("Error: One of the checks is not properly formatted. Skipping it");
   }
 };
 
@@ -146,7 +146,7 @@ workers.performCheck = originalCheckData => {
   const requestDetails = {
     protocol: `${originalCheckData.protocol}:`,
     hostname: hostName,
-    method: originalCheckData.method.toUpperCase(),
+    method: `${originalCheckData.method.toUpperCase()}`,
     path,
     timeout: originalCheckData.timeoutSeconds * 1000
   };
@@ -160,7 +160,11 @@ workers.performCheck = originalCheckData => {
     checkOutcome.resposeCode = status;
 
     const reqCompleted = res.complete;
-    console.log("res completed: ", reqCompleted);
+    debug([
+      `(workers) making check request`,
+      `(workers) check response completed: ${reqCompleted}`,
+      `(workers) check response statusCode: ${res.statusCode}`
+    ]);
 
     if (!outcomeSent) {
       workers.processCheckOutcome(originalCheckData, checkOutcome);
@@ -175,7 +179,7 @@ workers.performCheck = originalCheckData => {
       error: true,
       value: e
     };
-    // console.log("error event: ", checkOutcome.error);
+    // debug("error event: ", checkOutcome.error);
 
     if (!outcomeSent) {
       workers.processCheckOutcome(originalCheckData, checkOutcome);
@@ -190,7 +194,7 @@ workers.performCheck = originalCheckData => {
       error: true,
       value: "timeout"
     };
-    // console.log("timeout: ", checkOutcome.error);
+    // debug("timeout: ", checkOutcome.error);
     if (!outcomeSent) {
       workers.processCheckOutcome(originalCheckData, checkOutcome);
       outcomeSent = true;
@@ -240,10 +244,10 @@ workers.processCheckOutcome = (originalCheckData, checkOutcome) => {
       if (alertWarranted) {
         workers.alertUserToStatusChange(newCheckData);
       } else {
-        console.log("Check outcome has not changed no alert needed");
+        debug("Check outcome has not changed no alert needed");
       }
     } else {
-      console.log("Error trying to save updates to one of the checks");
+      debug("Error trying to save updates to one of the checks");
     }
   });
 };
@@ -255,12 +259,12 @@ workers.alertUserToStatusChange = newCheckData => {
   }://${newCheckData.url} is currently ${newCheckData.state}`;
   helpers.sendTwilioSms(newCheckData.userPhone, message, err => {
     if (!err) {
-      console.log(
+      debug(
         "Success: User was aterted to a status change in their check, via sms: ",
         msg
       );
     } else {
-      console.log(
+      debug(
         "Error: Could not send sms alert to user who add a state change in their check"
       );
     }
@@ -293,9 +297,9 @@ workers.log = (
   //   Append the log string to the file
   _logs.append(logFileName, logString, err => {
     if (!err) {
-      console.log("logging to file succeeded");
+      debug("logging to file succeeded");
     } else {
-      console.log("logging to file failed");
+      debug("logging to file failed");
     }
   });
 };
@@ -322,18 +326,18 @@ workers.rotateLogs = () => {
             // Truncate the log: emptying everything out of the origial log file that we are rotating through that came to us as logName
             _logs.truncate(logId, err => {
               if (!err) {
-                console.log("Success truncating logFile");
+                debug("Success truncating logFile");
               } else {
-                console.log("Error truncating logFile");
+                debug("Error truncating logFile");
               }
             });
           } else {
-            console.log("Error compressing one of the log files", err);
+            debug("Error compressing one of the log files", err);
           }
         });
       });
     } else {
-      console.log("Error: could not find any logs to rotate");
+      debug("Error: could not find any logs to rotate");
     }
   });
 };
@@ -348,6 +352,9 @@ workers.logRotationLoop = function() {
 
 // Init script
 workers.init = function() {
+  // Send to console, in yellow
+  console.log("\x1b[33m%s\x1b[0m", "Background workers are running");
+
   // Execute all the checks immediately
   workers.gatherAllChecks();
 
