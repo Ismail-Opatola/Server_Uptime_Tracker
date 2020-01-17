@@ -10,6 +10,34 @@ const config = require("./config");
 // define a request handlers
 const handlers = {};
 
+/**
+ * HTML Hndlers
+ *
+ */
+
+// Index handler
+handlers.index = (data, callback) => {
+  // callback(undefined, undefined, "html");
+  // Reject any request that isn't a GET
+  if (data.method !== "GET") {
+    // Read in a template as a string
+    helpers.getTemplate("index", (err, str) => {
+      if (!err && str) {
+        callback(200, str, "html");
+      } else {
+        callback(500, undefined, "html");
+      }
+    });
+  } else {
+    callback(405, undefined, "html");
+  }
+};
+
+/**
+ * JSON API Hndlers
+ *
+ */
+
 // -----------------
 // tokens handler
 // -----------------

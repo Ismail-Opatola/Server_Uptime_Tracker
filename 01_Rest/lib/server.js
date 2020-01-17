@@ -81,17 +81,28 @@ server.unifiedServer = (req, res) => {
     };
 
     // route the request to the hadler specified in the router
-    chosenHandler(data, (statusCode, payload) => {
+    chosenHandler(data, (statusCode, payload, contentType) => {
+      // Determine the type of response, fallback to JSON
+      contentType = typeof contentType == "string" ? contentType : "json";
       // use the status code called back by the handler, or default to 200
       statusCode = typeof statusCode == "number" ? statusCode : 200;
-      // use the payload called back by the handler, or default to an empty object
-      payload = typeof payload == "object" ? payload : {};
 
-      // convert the payload to a string
-      const payloadString = JSON.stringify(payload);
+      // return response-parts that are content-specific
+      let payloadString = "";
+      if (contentType == "json") {
+        res.setHeader("Content-Type", "application/json");
+        // use the payload called back by the handler, or default to an empty object
+        payload = typeof payload == "object" ? payload : {};
 
-      // return response
-      res.setHeader("Content-Type", "application/json");
+        // convert the payload to a string
+        payloadString = JSON.stringify(payload);
+      }
+
+      if (contentType == "html") {
+        res.setHeader("Content-Type", "text/html");
+        payloadString = typeof payload == "string" ? payload : "";
+      }
+      // return response-parts that are common to all content-type
       res.writeHead(statusCode);
       res.end(payloadString);
 
@@ -118,10 +129,19 @@ server.unifiedServer = (req, res) => {
 
 // define a request router
 server.router = {
+  "": handlers.index,
+  "account/create": handlers.accountCreate, // signup
+  "account/edit": handlers.accountEdit,
+  "account/deleted": handlers.accountDeleted,
+  "session/create": handlers.sessionCreate, // login
+  "session/deleted": handlers.sessionDeleted, // logout
+  "checks/all": handlers.checkList, // dashboard
+  "checks/create": handlers.checksCreate,
+  "checks/edit": handlers.checksEdit,
   ping: handlers.ping,
-  users: handlers.users,
-  tokens: handlers.tokens,
-  checks: handlers.checks
+  "api/users": handlers.users,
+  "api/tokens": handlers.tokens,
+  "api/checks": handlers.checks
 };
 
 // Init script
