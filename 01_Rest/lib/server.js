@@ -89,11 +89,11 @@ server.unifiedServer = (req, res) => {
 
       // return response-parts that are content-specific
       let payloadString = "";
+
       if (contentType == "json") {
         res.setHeader("Content-Type", "application/json");
         // use the payload called back by the handler, or default to an empty object
         payload = typeof payload == "object" ? payload : {};
-
         // convert the payload to a string
         payloadString = JSON.stringify(payload);
       }
@@ -102,11 +102,12 @@ server.unifiedServer = (req, res) => {
         res.setHeader("Content-Type", "text/html");
         payloadString = typeof payload == "string" ? payload : "";
       }
+
       // return response-parts that are common to all content-type
       res.writeHead(statusCode);
       res.end(payloadString);
 
-      //   log reponse: If the response is 200 print green, otherwise print red
+      // log reponse: If the response is 200 print green, otherwise print red
       if (statusCode == 200) {
         debug(
           "\x1b[32m%s\x1b[0m",
