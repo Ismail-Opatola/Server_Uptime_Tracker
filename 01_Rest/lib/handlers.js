@@ -24,7 +24,8 @@ handlers.index = (data, callback) => {
     // Prepare data for interpolation
     const templateData = {
       "head.title": "Uptime Monitoring - Made Simple",
-      "head.description": "We offer free, simple uptime monitoring for HTTP/HTTPS sites. When your site goes down we'll send you a text to let you know",
+      "head.description":
+        "We offer free, simple uptime monitoring for HTTP/HTTPS sites. When your site goes down we'll send you a text to let you know",
       "body.class": "index"
     };
 
@@ -48,6 +49,36 @@ handlers.index = (data, callback) => {
   }
 };
 
+// Create Account
+handlers.accountCreate = (data, callback) => {
+  // Reject any request that isn't a GET
+  if (data.method == "get") {
+    // Prepare data for interpolation
+    const templateData = {
+      "head.title": "Create an account",
+      "head.description": "Signup is eazy and only take a few seconds",
+      "body.class": "accountCreate"
+    };
+
+    // Read in a template as a string
+    helpers.getTemplate("accountCreate", templateData, (err, str) => {
+      if (!err && str) {
+        // Add universal header and footer
+        helpers.addUniversalTemplates(str, templateData, (err, str) => {
+          if (!err && str) {
+            callback(200, str, "html");
+          } else {
+            callback(500, undefined, "html");
+          }
+        });
+      } else {
+        callback(500, undefined, "html");
+      }
+    });
+  } else {
+    callback(405, undefined, "html");
+  }
+};
 // Favicon
 handlers.favicon = (data, callback) => {
   // Reject any request that isn't a GET
