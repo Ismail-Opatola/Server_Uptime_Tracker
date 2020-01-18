@@ -60,26 +60,33 @@ helpers.createRandomString = strLength => {
 };
 
 // Send an SMS message via Twilio
-helpers.sendTwilioSms = (phone, message, callback) => {
+helpers.sendTwilioSms = (phone, msg, callback) => {
   // validate parameters
   phone =
     typeof phone == "string" && phone.trim().length == 10
-      ? phone.trim().length
-      : false;
-  message =
-    typeof message == "string" &&
-    message.trim().length > 0 &&
-    message.trim().length <= 1600
-      ? message.trim()
+      ? phone.trim()
       : false;
 
-  if (phone && message) {
+  msg =
+    typeof msg == "string" && msg.trim().length > 0 && msg.trim().length <= 1600
+      ? msg.trim()
+      : false;
+  console.log("message", msg);
+
+  if (phone && msg) {
     // Configure the request payload
     const payload = {
-      from: config.twilio.fromPhone,
-      to: `+234${phone}`,
-      body: message
+      Body: msg,
+      From: config.twilio.fromPhone,
+      To: `+234${phone}`
     };
+
+    // authentication
+    // const authenticationHeader =
+    //   "Basic " +
+    //   new Buffer.from(
+    //     config.twilio.accountSid + ":" + config.twilio.authToken
+    //   ).toString("base64");
 
     // stringify payload using querystring module instead of JSON.stringify because the reqeust we'll be sending is not of application/json but 'application/x-www-form-urlencoded' form content-type as specified by Twilio
     const stringPayload = querystring.stringify(payload);
@@ -93,6 +100,7 @@ helpers.sendTwilioSms = (phone, message, callback) => {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         "Content-Length": Buffer.byteLength(stringPayload)
+        // Authorization: authenticationHeader
       }
     };
 
@@ -100,13 +108,28 @@ helpers.sendTwilioSms = (phone, message, callback) => {
     const req = https.request(requestDetails, res => {
       // grab the status of the sent request
       const status = res.statusCode;
-      console.log([
-        `(sendTwilioSms) making https post request`,
-        `(sendTwilioSms) response completed: ${res.complete}`,
-        `(sendTwilioSms) response statusCode: ${res.statusCode}`,
-        { "(sendTwilioSms) response headers:": res.headers },
-        { "(sendTwilioSms) response body:": res.body }
-      ]);
+      let body = "";
+      // res.setEncoding("utf8");
+      // res.on("data", chunk => (body += chunk));
+      res.on("end", () => {
+        console.log("Successfully processed HTTPS response");
+        // If we know it's JSON, parse it
+        // if (res.headers["content-type"] === "application/json") {
+        //   // body = JSON.parse(body);
+        //   body = JSON.parse(res.body);
+        // }
+        // callback(null, body);
+        // console.log({ "here's the body": body });
+      });
+
+      // console.log([
+      //   `(sendTwilioSms) making https post request`,
+      //   `(sendTwilioSms) response completed: ${res.complete}`,
+      //   `(sendTwilioSms) response statusCode: ${res.statusCode}`,
+      //   { "(sendTwilioSms) response headers:": res.headers },
+      //   { "(sendTwilioSms) response body:": res.body }
+      // ]);
+
       // callback successfully if the request went through
       if (status == 200 || status == 201) {
         callback(false);
