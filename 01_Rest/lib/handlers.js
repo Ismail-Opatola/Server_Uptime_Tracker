@@ -79,6 +79,37 @@ handlers.accountCreate = (data, callback) => {
     callback(405, undefined, "html");
   }
 };
+
+handlers.sessionCreate = (data, callback) => {
+  // Reject any request that isn't a GET
+  if (data.method == "get") {
+    // Prepare data for interpolation
+    const templateData = {
+      "head.title": "Login to your account",
+      "head.description": "Please enter your phone number and password to access your account.",
+      "body.class": "sessionCreate"
+    };
+
+    // Read in a template as a string
+    helpers.getTemplate("sessionCreate", templateData, (err, str) => {
+      if (!err && str) {
+        // Add universal header and footer
+        helpers.addUniversalTemplates(str, templateData, (err, str) => {
+          if (!err && str) {
+            callback(200, str, "html");
+          } else {
+            callback(500, undefined, "html");
+          }
+        });
+      } else {
+        callback(500, undefined, "html");
+      }
+    });
+  } else {
+    callback(405, undefined, "html");
+  }
+};
+
 // Favicon
 handlers.favicon = (data, callback) => {
   // Reject any request that isn't a GET
