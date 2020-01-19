@@ -158,7 +158,7 @@ server.router = {
   "account/deleted": handlers.accountDeleted,
   "session/create": handlers.sessionCreate, // login
   "session/deleted": handlers.sessionDeleted, // logout
-  "checks/all": handlers.checkList, // dashboard
+  "checks/all": handlers.checksList, // dashboard
   "checks/create": handlers.checksCreate,
   "checks/edit": handlers.checksEdit,
   ping: handlers.ping,
