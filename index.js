@@ -19,7 +19,7 @@ app.init = function() {
   // start the workers
   workers.init();
 
-  // Start thCLI, but make sure it starts last
+  // Start the CLI, but make sure it starts last
   setTimeout(() => {
     cli.init();
   }, 50);
