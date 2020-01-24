@@ -3,6 +3,10 @@
  *
  */
 
+//  Override the NODE_ENV variable
+// no matter what somebody sets when they run `Node_ENV = <env> node test/index.js` we would be overriding it to testing
+// enforcing the fact that when this test run it going to be starting the environment as NODE_ENV=testing, which means anyone using the config is going to inherit config.testing (obj) as opposed to the config.staging or config.production one
+process.env.NODE_ENV = "testing";
 
 // Application logic for ythe test runner
 _app = {};
@@ -11,7 +15,8 @@ _app = {};
 _app.tests = {};
 
 // Add on the unit test as a dependency
-_app.tests.unit = require('./unit')
+_app.tests.unit = require("./unit");
+_app.tests.api = require("./api");
 
 // To count all the test
 _app.countTests = () => {
@@ -54,6 +59,7 @@ _app.produceTestReport = (limit, successes, errors) => {
 
   console.log("");
   console.log("-----------------END TEST REPORT------------------");
+  process.exit(0); // to kill the app we started after running app.init() in the api-test
 };
 
 // Run all the test, collecting the errors and success

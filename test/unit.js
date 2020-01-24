@@ -37,9 +37,9 @@ unit["helpers.getANumber should return 2"] = done => {
 unit[
   "logs.list should callback a false error and an array of log names"
 ] = done => {
-  logs.list(true, (__, logFileNames) => {
+  logs.list(true, (err, logFileNames) => {
     //  assert that the callback return false ie. no error
-    assert.equal(__, false);
+    assert.equal(err, false);
     // assert that the filesName array should be truthy
     assert.ok(logFileNames instanceof Array);
     assert.ok(logFileNames.length > 1);
