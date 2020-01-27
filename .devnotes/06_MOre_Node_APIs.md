@@ -22,6 +22,19 @@ One of the things node is useful but not commonly used for building low-level ne
 - Create a TCP server and client to see how you can go about building a low-level networking application
 
 ## TLS/SSL
- A subset of the Net module that adds on SSL/TLS encryption to request apis
+
+A subset of the Net module that adds on SSL/TLS encryption to request apis
 
 ## REPL
+
+build a simple cli easily with REPL instead of using the readeline module and console log used in our previous cli app
+
+## Async Hooks
+
+Track the lifecycle of asynchronous operations. So as prevoiusly we used performance hooks to be able to log out at what time certain procedures were happening, async hooks lets you automatically know when an async function is initialised, it would htell you right before it gets called, right after it gets called, when it gets distroyed, or if its a promise when the promise get resolved.
+
+If you're trying to debug and figure-out when certain things are happening or you just are unsure some randome lib is calling some other function you can use async hooks to track whether or not a certain function is getting called, when its getting initialised etc.
+
+when you're debugging async-hooks can help you pin-point where and issue migth be.
+
+
