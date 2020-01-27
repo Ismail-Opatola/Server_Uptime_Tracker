@@ -15,8 +15,11 @@ it s part of the core P stack like the TCP, and the primary difference is you ca
 
 - build a very simple UDP server and UDP client
 
-## Net
+## TCP (Net)
 
 One of the things node is useful but not commonly used for building low-level networking applications. It exposes the TCP stack to you so you do not need to build http applications if you don't want to, You can drop down to the level of TCP and bind to sockets and write messages back and forth all you want.
 
 - Create a TCP server and client to see how you can go about building a low-level networking application
+
+## TLS/SSL
+ A subset of the Net module that adds on SSL/TLS encryption to request apis
